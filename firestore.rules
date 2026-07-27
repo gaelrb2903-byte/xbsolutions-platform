@@ -1,0 +1,34 @@
+rules_version = '2';
+
+// Reglas de seguridad de Firestore para la plataforma wxbsolutions.
+// Desplegar con: firebase deploy --only firestore:rules
+// (o pegar en Firebase Console > Firestore > Reglas).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isAdmin() { return signedIn() && request.auth.token.role == 'admin'; }
+
+    // Negocios: cualquier usuario autenticado los ve. Los vendedores solo
+    // pueden actualizar (cambiar estatus). Crear/borrar y demas, solo admin.
+    match /businesses/{id} {
+      allow read: if signedIn();
+      allow update: if signedIn();      // vendedores cambian estatus / admin todo
+      allow create, delete: if isAdmin();
+    }
+
+    // Citas: el vendedor crea las suyas y lee las propias; el admin ve todas.
+    match /appointments/{id} {
+      allow read: if isAdmin() || (signedIn() && resource.data.sellerId == request.auth.uid);
+      allow create: if signedIn() && request.resource.data.sellerId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    // Usuarios: cada quien lee su propio doc; el admin lee todos.
+    // La escritura la hacen las Netlify Functions con el Admin SDK (ignora reglas).
+    match /users/{uid} {
+      allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow write: if false;
+    }
+  }
+}
