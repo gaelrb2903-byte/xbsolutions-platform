@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Logo from '../components/Logo';
+import Waveform from '../components/Waveform';
 import { useAuth } from '../AuthContext';
 
 export default function Login() {
@@ -30,7 +31,10 @@ export default function Login() {
     <div className="login-wrap">
       <form className="glass login-card" onSubmit={submit}>
         <Logo />
-        <p className="login-sub">Plataforma interna · Prospeccion</p>
+        <p className="login-sub">Plataforma interna · Prospección</p>
+        <div style={{ display: 'flex', justifyContent: 'center', margin: '2px 0 20px' }}>
+          <Waveform />
+        </div>
 
         {error && <div className="alert alert-error">{error}</div>}
 
@@ -72,6 +76,6 @@ function mapAuthError(err) {
     return 'Usuario o contraseña incorrectos.';
   if (code.includes('too-many-requests'))
     return 'Demasiados intentos. Espera un momento e intenta de nuevo.';
-  if (code.includes('network')) return 'Sin conexion. Revisa tu internet.';
-  return 'No se pudo iniciar sesion. Intenta de nuevo.';
+  if (code.includes('network')) return 'Sin conexión. Revisa tu internet.';
+  return 'No se pudo iniciar sesión. Intenta de nuevo.';
 }

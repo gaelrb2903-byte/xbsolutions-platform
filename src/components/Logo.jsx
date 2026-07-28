@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-// Muestra /logo.png. Si el archivo aun no existe, cae a un wordmark de texto
+// Muestra /logo.png. Si el archivo aún no existe, cae a un wordmark de texto
 // para que la plataforma nunca se vea rota. Reemplaza public/logo.png por el real.
 export default function Logo({ className = '' }) {
   const [broken, setBroken] = useState(false);

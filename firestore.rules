@@ -15,13 +15,28 @@ service cloud.firestore {
       allow read: if signedIn();
       allow update: if signedIn();      // vendedores cambian estatus / admin todo
       allow create, delete: if isAdmin();
+
+      // Notas internas del equipo sobre el prospecto. Cualquiera autenticado
+      // las lee y agrega; no se editan ni se borran (salvo admin).
+      match /comments/{commentId} {
+        allow read, create: if signedIn();
+        allow update: if false;
+        allow delete: if isAdmin();
+      }
     }
 
-    // Citas: el vendedor crea las suyas y lee las propias; el admin ve todas.
+    // Citas: el vendedor crea, lee y edita las suyas (no las de otros vendedores);
+    // el admin ve y edita todas. request.resource.data.sellerId == auth.uid en el
+    // update evita que un vendedor "reasigne" la cita a otro vendedor.
     match /appointments/{id} {
       allow read: if isAdmin() || (signedIn() && resource.data.sellerId == request.auth.uid);
       allow create: if signedIn() && request.resource.data.sellerId == request.auth.uid;
-      allow update, delete: if isAdmin();
+      allow update: if isAdmin() || (
+        signedIn() &&
+        resource.data.sellerId == request.auth.uid &&
+        request.resource.data.sellerId == request.auth.uid
+      );
+      allow delete: if isAdmin();
     }
 
     // Usuarios: cada quien lee su propio doc; el admin lee todos.

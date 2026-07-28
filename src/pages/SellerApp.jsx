@@ -1,22 +1,38 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Layout from '../components/Layout';
 import ScriptView from '../components/ScriptView';
 import BusinessList from '../components/BusinessList';
 import ScheduleForm from '../components/ScheduleForm';
 import Modal from '../components/Modal';
+import CommentsPanel from '../components/CommentsPanel';
+import EmptyState from '../components/EmptyState';
+import Waveform from '../components/Waveform';
 import { useCollection } from '../useCollections';
+import { useAuth } from '../AuthContext';
+import { formatPhone } from '../phone';
+import { fillScriptVendedor, cleanScriptLine } from '../scriptUtils';
 
 const TABS = [
   { id: 'guion', label: 'Guion' },
   { id: 'negocios', label: 'Negocios' },
-  { id: 'agendar', label: 'Agendar cita' },
+  { id: 'citas', label: 'Mis citas' },
 ];
 
 export default function SellerApp() {
+  const { user } = useAuth();
   const [tab, setTab] = useState('negocios');
   const { items: businesses, loading } = useCollection('businesses', 'name');
+  const { items: myAppointments, loading: apptLoading } = useCollection(
+    'appointments', null, 'asc', 'sellerId', '==', user?.uid
+  );
+  const sortedAppointments = useMemo(
+    () => [...myAppointments].sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0)),
+    [myAppointments]
+  );
   const [scheduleFor, setScheduleFor] = useState(null); // negocio para modal
+  const [editingAppt, setEditingAppt] = useState(null); // cita propia a editar
   const [scriptFor, setScriptFor] = useState(null);     // negocio para ver guion IA
+  const [commentFor, setCommentFor] = useState(null);   // negocio para ver comentarios
 
   return (
     <Layout tabs={TABS} active={tab} onTab={setTab}>
@@ -30,16 +46,39 @@ export default function SellerApp() {
             businesses={businesses}
             onSchedule={(b) => setScheduleFor(b)}
             onViewScript={(b) => setScriptFor(b)}
+            onComment={(b) => setCommentFor(b)}
           />
         )
       )}
 
-      {tab === 'agendar' && (
+      {tab === 'citas' && (
         <div>
-          <div className="section-head"><h2>Agendar cita</h2></div>
-          <div className="glass" style={{ padding: 20 }}>
-            <ScheduleForm />
-          </div>
+          <div className="section-head"><h2><Waveform /> Mis citas</h2></div>
+          {apptLoading ? (
+            <div className="glass empty"><span className="spinner" /></div>
+          ) : sortedAppointments.length === 0 ? (
+            <EmptyState
+              icon="calendar"
+              title="Aún no has agendado citas."
+              hint="Agenda una desde la tarjeta de un negocio en la pestaña Negocios."
+            />
+          ) : (
+            <div className="agenda-list">
+              {sortedAppointments.map((a) => (
+                <div key={a.id} className="glass agenda-item">
+                  <div className="row-between">
+                    <div className="agenda-time">{a.fechaTexto || '—'}</div>
+                    <button className="btn-ghost btn-sm" onClick={() => setEditingAppt(a)}>Editar</button>
+                  </div>
+                  <div className="agenda-biz">{a.business}</div>
+                  <div className="muted" style={{ fontSize: 13 }}>
+                    {a.contact || '—'} · {a.phone ? <a href={`tel:${a.phone}`}>{formatPhone(a.phone)}</a> : '—'}
+                  </div>
+                  {a.notes && <div className="faint" style={{ marginTop: 4 }}>{a.notes}</div>}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -53,18 +92,34 @@ export default function SellerApp() {
         </Modal>
       )}
 
+      {editingAppt && (
+        <Modal
+          title="Editar cita"
+          subtitle={editingAppt.business}
+          onClose={() => setEditingAppt(null)}
+        >
+          <ScheduleForm editing={editingAppt} onDone={() => setEditingAppt(null)} />
+        </Modal>
+      )}
+
       {scriptFor && (
         <Modal
           title="Guion personalizado"
           subtitle={scriptFor.name}
           onClose={() => setScriptFor(null)}
+          wide
         >
           {scriptFor.customScript
-            ? scriptFor.customScript.split('\n').filter(Boolean).map((l, i) => (
-                <p key={i} style={{ lineHeight: 1.5 }}>{l}</p>
-              ))
-            : <p className="muted">Aun no hay guion IA para este negocio.</p>}
+            ? fillScriptVendedor(scriptFor.customScript, user?.name || user?.username)
+                .split('\n').filter(Boolean).map((l, i) => (
+                  <p key={i} style={{ lineHeight: 1.5 }}>{cleanScriptLine(l)}</p>
+                ))
+            : <p className="muted">Aún no hay guion IA para este negocio.</p>}
         </Modal>
+      )}
+
+      {commentFor && (
+        <CommentsPanel business={commentFor} onClose={() => setCommentFor(null)} />
       )}
     </Layout>
   );

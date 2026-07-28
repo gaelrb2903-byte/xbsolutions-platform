@@ -1,5 +1,5 @@
-// Parser CSV minimo pero robusto: maneja comillas, comas dentro de comillas,
-// saltos de linea escapados y comillas dobles ("").
+// Parser CSV mínimo pero robusto: maneja comillas, comas dentro de comillas,
+// saltos de línea escapados y comillas dobles ("").
 export function parseCSV(text) {
   const rows = [];
   let row = [];
@@ -53,7 +53,7 @@ export function csvToBusinesses(text) {
   const hasKnownHeader = cols.some(Boolean);
 
   const dataRows = hasKnownHeader ? rows.slice(1) : rows;
-  // Sin encabezado reconocido, asumimos el orden pedido: nombre, contacto, telefono, categoria.
+  // Sin encabezado reconocido, asumimos el orden pedido: nombre, contacto, teléfono, categoría.
   const order = hasKnownHeader ? cols : ['name', 'contact', 'phone', 'category'];
 
   return dataRows.map((r) => {

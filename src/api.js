@@ -5,7 +5,7 @@ import { auth } from './firebase';
 // ese token en el servidor y exigen rol admin.
 export async function callFunction(name, body = {}) {
   const currentUser = auth.currentUser;
-  if (!currentUser) throw new Error('No hay sesion activa.');
+  if (!currentUser) throw new Error('No hay sesión activa.');
   const token = await currentUser.getIdToken();
 
   const res = await fetch(`/.netlify/functions/${name}`, {
@@ -18,7 +18,7 @@ export async function callFunction(name, body = {}) {
   });
 
   let data = null;
-  try { data = await res.json(); } catch (_) { /* respuesta vacia */ }
+  try { data = await res.json(); } catch (_) { /* respuesta vacía */ }
 
   if (!res.ok) {
     throw new Error((data && data.error) || `Error ${res.status}`);

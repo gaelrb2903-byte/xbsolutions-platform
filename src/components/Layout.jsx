@@ -27,7 +27,9 @@ export default function Layout({ tabs, active, onTab, children }) {
             ))}
           </nav>
         )}
-        {children}
+        <div key={active} className="view-fade">
+          {children}
+        </div>
       </main>
     </div>
   );

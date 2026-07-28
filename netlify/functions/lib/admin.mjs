@@ -1,6 +1,6 @@
 import admin from 'firebase-admin';
 
-// Inicializa Firebase Admin una sola vez por instancia de funcion.
+// Inicializa Firebase Admin una sola vez por instancia de función.
 // Credenciales desde FIREBASE_SERVICE_ACCOUNT (JSON en una linea) o
 // GOOGLE_APPLICATION_CREDENTIALS (ruta a archivo).
 let app;
@@ -26,20 +26,24 @@ export const SELLER_EMAIL_DOMAIN =
 export const usernameToEmail = (u) =>
   `${String(u).trim().toLowerCase()}@${SELLER_EMAIL_DOMAIN}`;
 
-// Verifica el ID token del header Authorization y exige rol admin.
+// Verifica el ID token del header Authorization, sin exigir rol admin.
 // Devuelve el token decodificado o lanza { statusCode, error }.
-export async function requireAdmin(event) {
+export async function requireAuth(event) {
   const header = event.headers.authorization || event.headers.Authorization || '';
   const match = header.match(/^Bearer (.+)$/);
-  if (!match) throw { statusCode: 401, error: 'Falta el token de autenticacion.' };
+  if (!match) throw { statusCode: 401, error: 'Falta el token de autenticación.' };
 
   getAdmin();
-  let decoded;
   try {
-    decoded = await admin.auth().verifyIdToken(match[1]);
+    return await admin.auth().verifyIdToken(match[1]);
   } catch (_) {
-    throw { statusCode: 401, error: 'Token invalido o expirado.' };
+    throw { statusCode: 401, error: 'Token inválido o expirado.' };
   }
+}
+
+// Igual que requireAuth, pero además exige rol admin.
+export async function requireAdmin(event) {
+  const decoded = await requireAuth(event);
   if (decoded.role !== 'admin') {
     throw { statusCode: 403, error: 'Se requieren permisos de administrador.' };
   }

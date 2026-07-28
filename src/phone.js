@@ -1,4 +1,4 @@
-// Normaliza un telefono a solo digitos para deduplicar de forma confiable.
+// Normaliza un teléfono a solo dígitos para deduplicar de forma confiable.
 // "(442) 123-4567", "442 123 4567" y "4421234567" colapsan al mismo valor.
 // Si trae lada de pais mexicana (52) de 12 digitos, la recorta a 10.
 export function normalizePhone(raw) {

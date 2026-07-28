@@ -4,7 +4,7 @@ import { getAdmin, requireAdmin, usernameToEmail, json } from './lib/admin.mjs';
 // Crea una cuenta de vendedor: usuario de Firebase Auth + custom claim role=seller
 // + doc en 'users'. Solo el admin puede llamarla.
 export async function handler(event) {
-  if (event.httpMethod !== 'POST') return json(405, { error: 'Metodo no permitido.' });
+  if (event.httpMethod !== 'POST') return json(405, { error: 'Método no permitido.' });
 
   try {
     await requireAdmin(event);
@@ -15,7 +15,7 @@ export async function handler(event) {
       return json(400, { error: 'Faltan datos: nombre, usuario y contraseña.' });
     }
     if (!/^[a-z0-9._-]{3,}$/.test(username)) {
-      return json(400, { error: 'Usuario invalido (min 3, solo letras/numeros/._-).' });
+      return json(400, { error: 'Usuario inválido (mín. 3, solo letras/números/._-).' });
     }
     if (password.length < 6) {
       return json(400, { error: 'La contraseña debe tener al menos 6 caracteres.' });

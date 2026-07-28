@@ -1,20 +1,22 @@
 import { useState } from 'react';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { addDoc, collection, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../AuthContext';
+import { useToast } from '../ToastContext';
+import { callFunction } from '../api';
 
-// Formulario para agendar una cita. Queda registrada en Firestore ('appointments')
-// para que el admin la vea en su panel. Sin calendario externo.
-// Props: prefill (negocio opcional), onDone()
-export default function ScheduleForm({ prefill = {}, onDone }) {
+// Formulario para agendar una cita, o editar una ya agendada (prop `editing`).
+// Queda registrada en Firestore ('appointments') para que el admin la vea.
+// Props: prefill (negocio opcional, solo al crear), editing (cita a editar), onDone()
+export default function ScheduleForm({ prefill = {}, editing = null, onDone }) {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const [form, setForm] = useState({
-    business: prefill.name || '',
-    contact: prefill.contact || '',
-    phone: prefill.phone || '',
-    date: '',
-    time: '',
-    notes: '',
+    business: editing?.business || prefill.name || '',
+    contact: editing?.contact || prefill.contact || '',
+    phone: editing?.phone || prefill.phone || '',
+    fechaTexto: editing?.fechaTexto || '',
+    notes: editing?.notes || '',
   });
   const [busy, setBusy] = useState(false);
   const [ok, setOk] = useState(false);
@@ -27,24 +29,43 @@ export default function ScheduleForm({ prefill = {}, onDone }) {
     setError('');
     setBusy(true);
     try {
-      await addDoc(collection(db, 'appointments'), {
-        ...form,
-        businessId: prefill.id || null,
-        sellerId: user.uid,
-        sellerName: user?.name || user?.username || 'vendedor',
-        createdAt: serverTimestamp(),
-      });
-      setOk(true);
+      if (editing) {
+        await updateDoc(doc(db, 'appointments', editing.id), { ...form });
+        setOk(true);
+        showToast('ok', `Cita actualizada: ${form.business}.`);
+      } else {
+        const sellerName = user?.name || user?.username || 'vendedor';
+        await addDoc(collection(db, 'appointments'), {
+          ...form,
+          businessId: prefill.id || null,
+          sellerId: user.uid,
+          sellerName,
+          createdAt: serverTimestamp(),
+        });
+        setOk(true);
+        showToast('ok', `Cita agendada: ${form.business}.`);
+
+        // Aviso por correo a Gael. Best-effort: si falla (o falta la API key
+        // de Resend en el servidor) no afecta la cita ya guardada.
+        callFunction('notify-appointment', { ...form, sellerName }).catch((err) => {
+          console.error('notify-appointment:', err);
+        });
+      }
+
       if (onDone) setTimeout(onDone, 900);
     } catch (err) {
       console.error(err);
-      setError('No se pudo agendar. Intenta de nuevo.');
+      setError(editing ? 'No se pudo guardar el cambio. Intenta de nuevo.' : 'No se pudo agendar. Intenta de nuevo.');
       setBusy(false);
     }
   };
 
   if (ok) {
-    return <div className="alert alert-ok">✓ Cita agendada. El admin ya puede verla.</div>;
+    return (
+      <div className="alert alert-ok">
+        {editing ? '✓ Cita actualizada.' : '✓ Cita agendada. El admin ya puede verla.'}
+      </div>
+    );
   }
 
   return (
@@ -64,22 +85,21 @@ export default function ScheduleForm({ prefill = {}, onDone }) {
           <input value={form.phone} onChange={set('phone')} inputMode="tel" />
         </div>
       </div>
-      <div className="form-row-2">
-        <div>
-          <label>Fecha</label>
-          <input type="date" value={form.date} onChange={set('date')} required />
-        </div>
-        <div>
-          <label>Hora</label>
-          <input type="time" value={form.time} onChange={set('time')} required />
-        </div>
+      <div>
+        <label>¿Cuándo quedó la cita?</label>
+        <input
+          value={form.fechaTexto}
+          onChange={set('fechaTexto')}
+          placeholder="ej. mañana 3pm, 28 de julio 5pm"
+          required
+        />
       </div>
       <div>
-        <label>Notas (ej. pidio algo mas economico, mejor horario, etc.)</label>
+        <label>Notas (ej. pidió algo más económico, mejor horario, etc.)</label>
         <textarea rows={3} value={form.notes} onChange={set('notes')} />
       </div>
       <button className="btn btn-block" disabled={busy}>
-        {busy ? <span className="spinner" /> : 'Agendar cita'}
+        {busy ? <span className="spinner" /> : (editing ? 'Guardar cambios' : 'Agendar cita')}
       </button>
     </form>
   );

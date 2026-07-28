@@ -1,4 +1,5 @@
 import { BASE_SCRIPT } from '../baseScript';
+import Waveform from './Waveform';
 
 // Guion de referencia. Si se le pasa `customScript` (texto generado por IA para
 // un negocio concreto), lo muestra arriba en una tarjeta destacada.
@@ -6,7 +7,7 @@ export default function ScriptView({ customScript, businessName }) {
   return (
     <div>
       <div className="section-head">
-        <h2>Guion de llamada</h2>
+        <h2><Waveform /> Guion de llamada</h2>
       </div>
 
       <div className="glass script-section alert-info" style={{ marginBottom: 16 }}>
