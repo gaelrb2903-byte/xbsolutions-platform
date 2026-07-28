@@ -25,9 +25,9 @@ service cloud.firestore {
       }
     }
 
-    // Citas: el vendedor crea, lee y edita las suyas (no las de otros vendedores);
-    // el admin ve y edita todas. request.resource.data.sellerId == auth.uid en el
-    // update evita que un vendedor "reasigne" la cita a otro vendedor.
+    // Citas: el vendedor crea, lee, edita y borra las suyas (no las de otros
+    // vendedores); el admin ve, edita y borra todas. request.resource.data.sellerId
+    // == auth.uid en el update evita que un vendedor "reasigne" la cita a otro.
     match /appointments/{id} {
       allow read: if isAdmin() || (signedIn() && resource.data.sellerId == request.auth.uid);
       allow create: if signedIn() && request.resource.data.sellerId == request.auth.uid;
@@ -36,7 +36,7 @@ service cloud.firestore {
         resource.data.sellerId == request.auth.uid &&
         request.resource.data.sellerId == request.auth.uid
       );
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() || (signedIn() && resource.data.sellerId == request.auth.uid);
     }
 
     // Usuarios: cada quien lee su propio doc; el admin lee todos.

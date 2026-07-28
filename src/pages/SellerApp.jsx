@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react';
+import { deleteDoc, doc } from 'firebase/firestore';
+import { db } from '../firebase';
 import Layout from '../components/Layout';
 import ScriptView from '../components/ScriptView';
 import BusinessList from '../components/BusinessList';
@@ -9,6 +11,7 @@ import EmptyState from '../components/EmptyState';
 import Waveform from '../components/Waveform';
 import { useCollection } from '../useCollections';
 import { useAuth } from '../AuthContext';
+import { useToast } from '../ToastContext';
 import { formatPhone } from '../phone';
 import { fillScriptVendedor, cleanScriptLine } from '../scriptUtils';
 
@@ -20,6 +23,7 @@ const TABS = [
 
 export default function SellerApp() {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const [tab, setTab] = useState('negocios');
   const { items: businesses, loading } = useCollection('businesses', 'name');
   const { items: myAppointments, loading: apptLoading } = useCollection(
@@ -33,6 +37,17 @@ export default function SellerApp() {
   const [editingAppt, setEditingAppt] = useState(null); // cita propia a editar
   const [scriptFor, setScriptFor] = useState(null);     // negocio para ver guion IA
   const [commentFor, setCommentFor] = useState(null);   // negocio para ver comentarios
+
+  const deleteAppointment = async (a) => {
+    if (!confirm(`¿Borrar la cita de "${a.business}"?`)) return;
+    try {
+      await deleteDoc(doc(db, 'appointments', a.id));
+      showToast('ok', 'Cita borrada.');
+    } catch (err) {
+      console.error(err);
+      showToast('error', 'No se pudo borrar la cita.');
+    }
+  };
 
   return (
     <Layout tabs={TABS} active={tab} onTab={setTab}>
@@ -68,7 +83,10 @@ export default function SellerApp() {
                 <div key={a.id} className="glass agenda-item">
                   <div className="row-between">
                     <div className="agenda-time">{a.fechaTexto || '—'}</div>
-                    <button className="btn-ghost btn-sm" onClick={() => setEditingAppt(a)}>Editar</button>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button className="btn-ghost btn-sm" onClick={() => setEditingAppt(a)}>Editar</button>
+                      <button className="btn-danger btn-sm" onClick={() => deleteAppointment(a)}>Borrar</button>
+                    </div>
                   </div>
                   <div className="agenda-biz">{a.business}</div>
                   <div className="muted" style={{ fontSize: 13 }}>

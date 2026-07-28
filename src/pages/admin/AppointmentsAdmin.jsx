@@ -1,9 +1,14 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { deleteDoc, doc } from 'firebase/firestore';
+import { db } from '../../firebase';
 import { useCollection } from '../../useCollections';
+import { useToast } from '../../ToastContext';
 import { formatPhone } from '../../phone';
 import StatRow from '../../components/StatRow';
 import EmptyState from '../../components/EmptyState';
 import Waveform from '../../components/Waveform';
+import Modal from '../../components/Modal';
+import ScheduleForm from '../../components/ScheduleForm';
 
 // Rango de la semana actual (lunes 00:00 a domingo 23:59, hora local).
 function currentWeekRange() {
@@ -21,6 +26,8 @@ function currentWeekRange() {
 // servidor de cuando se agendo — eso si es confiable.
 export default function AppointmentsAdmin() {
   const { items, loading } = useCollection('appointments', 'createdAt', 'desc');
+  const { showToast } = useToast();
+  const [editingAppt, setEditingAppt] = useState(null);
 
   const thisWeekCount = useMemo(() => {
     const { start, end } = currentWeekRange();
@@ -29,6 +36,17 @@ export default function AppointmentsAdmin() {
       return d && d >= start && d <= end;
     }).length;
   }, [items]);
+
+  const deleteAppointment = async (a) => {
+    if (!confirm(`¿Borrar la cita de "${a.business}"?`)) return;
+    try {
+      await deleteDoc(doc(db, 'appointments', a.id));
+      showToast('ok', 'Cita borrada.');
+    } catch (err) {
+      console.error(err);
+      showToast('error', 'No se pudo borrar la cita.');
+    }
+  };
 
   return (
     <div>
@@ -55,7 +73,13 @@ export default function AppointmentsAdmin() {
         <div className="agenda-list view-fade">
           {items.map((a) => (
             <div key={a.id} className="glass agenda-item">
-              <div className="agenda-time">{a.fechaTexto || '—'}</div>
+              <div className="row-between">
+                <div className="agenda-time">{a.fechaTexto || '—'}</div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button className="btn-ghost btn-sm" onClick={() => setEditingAppt(a)}>Editar</button>
+                  <button className="btn-danger btn-sm" onClick={() => deleteAppointment(a)}>Borrar</button>
+                </div>
+              </div>
               <div className="agenda-biz">{a.business}</div>
               <div className="muted" style={{ fontSize: 13 }}>
                 {a.contact || '—'} · {a.phone ? <a href={`tel:${a.phone}`}>{formatPhone(a.phone)}</a> : '—'}
@@ -66,6 +90,16 @@ export default function AppointmentsAdmin() {
             </div>
           ))}
         </div>
+      )}
+
+      {editingAppt && (
+        <Modal
+          title="Editar cita"
+          subtitle={editingAppt.business}
+          onClose={() => setEditingAppt(null)}
+        >
+          <ScheduleForm editing={editingAppt} onDone={() => setEditingAppt(null)} />
+        </Modal>
       )}
     </div>
   );
